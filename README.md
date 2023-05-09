@@ -14,6 +14,16 @@ events
   set at 50 kilometers. 
   + Conflict area: Area of the conflict zone in square kilometers. 
 
++ ConflictSite 4-2010.xls: a geocoded conflict zone
+  + ID: conflict identifier
+  + Year: Year of observation. 
+  + Coordinate: Latitude & Longitude of the geographical center of the conflict 
+  zone. 
+  + Radius: The radius of the conflict zone is given in 50 kilometer intervals, 
+  rounded upwards. If a conflict took place within a single spot the radius is 
+  set at 50 kilometers. 
+  + Conflict area: Area of the conflict zone in square kilometers. 
+
 + flooding_mun_4country.RData: flood event data frame, including
   + year_start & month_start: the year and month flood started
   + year_end & month_end: the year and month flood ended
@@ -41,3 +51,22 @@ Interested in starting with the following variables:
   drought
 
 + World_Cities_shapefile.zip
+
+## Goal 1
+
+Create dataset that looks like the table in data/goal-1-data.csv with the 
+following columns: 
+
+| Column | Source | 
+|:-------|:-------|
+| municipality | flooding_mun_4country.RData |
+| year | flooding_mun_4country.RData |
+| month | flooding_mun_4country.RData |
+| lat | flooding_mun_4country.RData |
+| long | flooding_mun_4country.RData |
+| temperature | grid_combined_4country.RData |
+| drought | grid_combined_4country.RData |
+| precipitation | grid_combined_4country.RData |
+| flood | flooding_mun_4country.RData |
+| count of conflict event | ??? |
+| conflict zone | ??? |
