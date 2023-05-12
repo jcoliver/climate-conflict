@@ -70,3 +70,14 @@ following columns:
 | flood | flooding_mun_4country.RData |
 | count of conflict event | ??? |
 | conflict zone | ??? |
+
+## Extracting municipality-level climate data
+
+Subnational Administrative Boundaries level 2 (ADM2) are municipalities; these 
+boundaries can be downloaded as shapefiles from 
+[https://www.geoboundaries.org/index.html#getdata](https://www.geoboundaries.org/index.html#getdata).
+
+## Other information
+
+Marshall, B., Solomon, M.H. & Edward, M. 2015. Climate and conflict. Annual Review of
+Economics. DOI:[10.1146/annurev-economics-080614-115430](https://doi.org/10.1146/annurev-economics-080614-115430)
