@@ -68,40 +68,37 @@ load(file = "data/grid_combined_4country.RData")
 # Find all the years for which we have weather data
 years <- sort(unique(grid_combined_4country$year))
 
-# List to hold data frames for each year of data
-muni_data_list <- vector(mode = "list", length = length(years))
-# Index this list by character years
-names(muni_data_list) <- as.character(years)
-
-# Iterate over all years
-for (year_i in years) {
-  # Pull out weather variables for one year and select columns of interest
-  weather_df <- grid_combined_4country %>%
-    dplyr::filter(year == year_i) %>%
-    dplyr::select(xcoord, ycoord, temp, prec_gpcp, droughtcrop_speibase)
-    
-  # Convert weather data to raster
-  weather_ras <- terra::rast(x = weather_df, type = "xyz")
-  
-  # Use the municipality SpatVector to extract mean values from the weather 
-  # SpatRaster
-  muni_weather <- extract(x = weather_ras,
-                          y = muni_vectors,
-                          mean, 
-                          na.rm = TRUE)
-  # Add municipality names to this weather data frame; have to wrap in a call 
-  # to list() with named element for the municipality; otherwise throws 
-  # annoying "New names" message and requires subsequent assignment for the 
-  # column where shapeName data end up. Also, drop the manufactured ID column
-  muni_data <- dplyr::bind_cols(list(municipality = muni_vectors$shapeName, 
-                                     muni_weather)) %>%
-    dplyr::select(-ID)
-  muni_data_list[[as.character(year_i)]] <- muni_data
-}
-# Bind data frames for all years into a single data frame and re-type the year 
-# column as numeric
-all_muni <- dplyr::bind_rows(muni_data_list, .id = "year") %>%
-  mutate(year = as.numeric(year))
+# Use vectorization to apply to all years, ignoring Demeter a bit
+muni_data_list <- base::lapply(X = years, 
+                               FUN = function(year_i) {
+     # Pull out weather variables for one year and select columns of interest
+     weather_df <- grid_combined_4country %>%
+       dplyr::filter(year == year_i) %>%
+       dplyr::select(xcoord, ycoord, temp, prec_gpcp, droughtcrop_speibase)
+     
+     # Convert weather data to raster
+     weather_ras <- terra::rast(x = weather_df, type = "xyz")
+     
+     # Use the municipality SpatVector to extract mean values from the weather 
+     # SpatRaster
+     muni_weather <- extract(x = weather_ras,
+                             y = muni_vectors,
+                             mean, 
+                             na.rm = TRUE)
+     # Add municipality names to this weather data frame; have to wrap in a call 
+     # to list() with named element for the municipality; otherwise throws 
+     # annoying "New names" message and requires subsequent assignment for the 
+     # column where shapeName data end up. Also, 
+     #   + drop the manufactured ID column
+     #   + add a column for the current year
+     muni_data <- dplyr::bind_cols(list(municipality = muni_vectors$shapeName, 
+                                        muni_weather)) %>%
+       dplyr::select(-ID) %>%
+       dplyr::mutate(year = year_i) %>%
+     return(muni_data)
+  })
+# Bind data for all years into a single data frame
+all_muni <- dplyr::bind_rows(muni_data_list)
 
 ################################################################################
 
