@@ -10,13 +10,8 @@ library(dplyr) # data wrangling
 
 # Currently a proof of concept, where mean values for each municipality are 
 # extracted for the three weather variables (temperature, precipitation, 
-# drought) for one year (1995) and one country (El Salvador)
-# Next step is to do this for all four countries, across all years of data and 
-# create a single data frame with the following columns:
-# Country | Municipality | Year | temp | prec_gpcp | droughtcrop_speibase
-# This will then be joined with flood and conflict data
-
-# Four countries: El Salvador, Guatemala, Honduras, Mexico
+# drought). Start with an approach for one year (1995) and one country (El 
+# Salvador)
 
 # Subnational Administrative Boundaries level 2 (ADM2) are municipalities
 # https://www.geoboundaries.org/index.html#getdata
@@ -56,3 +51,64 @@ slv_weather <- extract(x = weather_ras,
 slv_data <- bind_cols(slv_v$shapeName, slv_weather)
 colnames(slv_data)[1] <- "municipality"
 head(slv_data)
+
+################################################################################
+# Next, an approach for all years for one country.
+
+# Read in the shapefile of municipality boundaries for the country of interest
+# (El Salvador)
+muni_shapes <- sf::st_read("data/municipality-shapefiles/el-salvador/geoBoundaries-SLV-ADM2.shp")
+
+# Turn this shape into a SpatVector
+muni_vectors <- terra::vect(muni_shapes)
+
+# Load in weather data
+load(file = "data/grid_combined_4country.RData")
+
+# Find all the years for which we have weather data
+years <- sort(unique(grid_combined_4country$year))
+
+# List to hold data frames for each year of data
+muni_data_list <- vector(mode = "list", length = length(years))
+# Index this list by character years
+names(muni_data_list) <- as.character(years)
+
+# Iterate over all years
+for (year_i in years) {
+  # Pull out weather variables for one year and select columns of interest
+  weather_df <- grid_combined_4country %>%
+    dplyr::filter(year == year_i) %>%
+    dplyr::select(xcoord, ycoord, temp, prec_gpcp, droughtcrop_speibase)
+    
+  # Convert weather data to raster
+  weather_ras <- terra::rast(x = weather_df, type = "xyz")
+  
+  # Use the municipality SpatVector to extract mean values from the weather 
+  # SpatRaster
+  muni_weather <- extract(x = weather_ras,
+                          y = muni_vectors,
+                          mean, 
+                          na.rm = TRUE)
+  # Add municipality names to this weather data frame; have to wrap in a call 
+  # to list() with named element for the municipality; otherwise throws 
+  # annoying "New names" message and requires subsequent assignment for the 
+  # column where shapeName data end up. Also, drop the manufactured ID column
+  muni_data <- dplyr::bind_cols(list(municipality = muni_vectors$shapeName, 
+                                     muni_weather)) %>%
+    dplyr::select(-ID)
+  muni_data_list[[as.character(year_i)]] <- muni_data
+}
+# Bind data frames for all years into a single data frame and re-type the year 
+# column as numeric
+all_muni <- dplyr::bind_rows(muni_data_list, .id = "year") %>%
+  mutate(year = as.numeric(year))
+
+################################################################################
+
+# Finally, do this across all years of data and for all four countries, then
+# create a single data frame with the following columns:
+# Country | Municipality | Year | temp | prec_gpcp | droughtcrop_speibase
+# This will then be joined with flood and conflict data
+
+# Four countries: El Salvador, Guatemala, Honduras, Mexico
+
