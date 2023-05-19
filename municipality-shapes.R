@@ -3,6 +3,9 @@
 # jcoliver@arizona.edu
 # 2023-05-12
 
+# DEPRECATED
+# See create-muni-weather.R
+
 # Load libraries
 library(sf)    # reading in shapefiles
 library(terra) # raster functions
