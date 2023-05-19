@@ -3,6 +3,9 @@
 # jcoliver@arizona.edu
 # 2023-05-08
 
+# DEPRECATED
+# See join-muni-data.R
+
 # Load libraries
 library(terra)
 library(dplyr)
