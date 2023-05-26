@@ -12,18 +12,10 @@ library(tidyr)    # Making complete matrix
 muni_weather <- read.csv(file = "data/muni-weather.csv")
 
 # Load in flooding data
-load(file = "data/flooding_mun_4country.RData")
+# load(file = "data/flooding_mun_4country.RData")
+flood_data <- read.csv(file = "data/flood-data.csv")
 
 # TODO: At least one mispelled value in OtherCount: "Gutamala"
-
-# TODO: What are "Country" and "OtherCount" columns? first few rows of flood 
-# data have department = AHUACHAPAN and municipality = AHUACHAPAN, but multiple
-# countries (this department + municipality is only in El Salvador)
-# The lat/long coordinates refer to a spot in the Country column, so what are 
-# department & municipality referring to?
-flooding_mun_4country %>% 
-  select(Country, OtherCount, municipality, department, lat, long) %>%
-  head()
 
 # Pull out just columns of interest from the flood dataset; needs some 
 # de-duplication, so we start with larger sampling of columns

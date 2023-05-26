@@ -4,7 +4,6 @@
 # 2023-05-19
 
 # Load libraries
-library(geodata) # downloading municipality administrative boundaries
 library(sf)      # reading in shapefiles
 library(terra)   # raster functions
 library(dplyr)   # data wrangling
@@ -20,27 +19,9 @@ library(dplyr)   # data wrangling
 
 # Four countries: El Salvador, Guatemala, Honduras, Mexico
 
-# Make a data frame for easier iteration and file path information
-boundaries_info <- data.frame(dir_name = c("el-salvador", "guatemala", 
-                                          "honduras", "mexico"),
-                             ctry_code = c("SLV", "GTM", "HND", "MEX"))
-
-# Check for boundary data files; download them if they do not exist locally
-for (row_i in 1:nrow(boundaries_info)) {
-  ctry_code <- boundaries_info$ctry_code[row_i]
-  if (!file.exists(paste0("data/gadm/", tolower(ctry_code), "/gadm41_",
-                          ctry_code, "_2_pk.rds"))) {
-    message("Downloading ADM2 data for ", ctry_code)
-    ctry_data <- geodata::gadm(country = ctry_code,
-                               level = 2,
-                               path = paste0("data/gadm/", tolower(ctry_code)))
-  }
-}
-
-# Make a column with file path information
-boundaries_info <- boundaries_info %>%
-  mutate(filename = paste0("data/gadm/", tolower(ctry_code), "/gadm41_",
-                           ctry_code, "_2_pk.rds"))
+# Load in administrative boundaries information (will download data if it does 
+# not already exist on disk)
+source(file = "boundaries-info.R")
 
 # Load in weather data
 load(file = "data/grid_combined_4country.RData")

@@ -52,6 +52,18 @@ Interested in starting with the following variables:
 
 + World_Cities_shapefile.zip
 
+## Scripts
+
++ add-muni-to-flood.R: Add country, department, and municipality to each point 
+in flood event data. Based on GADM boundaries.
++ boundaries-info.R: Create dataframe with administrative boundary data 
+information (directory name, country code, and path to shapefile)
++ create-muni-weather.R: Extract weather data for each municipality on an 
+annual basis. Uses administrative boundaries from GADM to extract mean values 
+from rasterized weather data.
++ join-muni-data.R: Join municipality weather data with flood and conflict data 
+for each municipality
+
 ## Goal 1
 
 Create dataset that looks like the table in data/goal-1-data.csv with the 
@@ -70,12 +82,6 @@ following columns:
 | flood | flooding_mun_4country.RData |
 | count of conflict event | ??? |
 | conflict zone | ??? |
-
-## Extracting municipality-level climate data
-
-Subnational Administrative Boundaries level 2 (ADM2) are municipalities; these 
-boundaries can be downloaded as shapefiles from 
-[https://www.geoboundaries.org/index.html#getdata](https://www.geoboundaries.org/index.html#getdata).
 
 ## Other information
 
