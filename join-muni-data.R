@@ -4,7 +4,7 @@
 # 2023-05-19
 
 library(dplyr)
-library(stringi)  # Replacement of diacritcs etc. in place names
+library(stringi)  # Replacement of diacritcs etc. in country names
 library(tidyr)    # Making complete matrix
 
 # Load in weather data
@@ -15,128 +15,78 @@ muni_weather <- read.csv(file = "data/muni-weather.csv")
 # load(file = "data/flooding_mun_4country.RData")
 flood_data <- read.csv(file = "data/flood-data.csv")
 
-# TODO: At least one mispelled value in OtherCount: "Gutamala"
+# Only want to join on years with flood data *AND* weather data
+year_intersect <- dplyr::intersect(x = flood_summary$year,
+                                   y = muni_weather$year)
 
-# Pull out just columns of interest from the flood dataset; needs some 
-# de-duplication, so we start with larger sampling of columns
-flood_data <- flooding_mun_4country %>%
-  mutate(muni_lower = tolower(municipality),
-         dept_lower = tolower(department)) %>%
-  select(department, municipality, dept_lower, muni_lower, year, month, day, 
-         Country, Dead) %>%
-  distinct() %>%
-  rename(country = Country,
-         dead = Dead)
+# Drop flood data rows missing municipality information & filter by year
+flood_data <- flood_data %>%
+  filter(!is.na(municipality)) %>%
+  filter(year %in% year_intersect)
 
-# Replace diacritics in department & municipality names so we can match with 
-# flood data (which lacks any diacritic characters)
+# Flood data uses a diacritic for México, but weather data does not, update 
+# values in weather data for consistency; filter by year
 muni_weather <- muni_weather %>%
-  mutate(department = stringi::stri_trans_general(department, 
-                                                  id = "Latin-ASCII"),
-         municipality = stringi::stri_trans_general(municipality,
-                                                    id = "Latin-ASCII"))
-
-# Create dept_lower & muni_lower column for easier joining
-muni_weather <- muni_weather %>%
-  mutate(dept_lower = tolower(department),
-         muni_lower = tolower(municipality))
+  mutate(country = gsub(pattern = "Mexico",
+                        replacement = "México", 
+                        x = country)) %>%
+  filter(year %in% year_intersect)
 
 # Summarize the flood data by country, department, municipality, year, and 
 # month; prepare for join with weather data
 flood_summary <- flood_data %>%
-  group_by(country, dept_lower, muni_lower, year, month) %>%
+  group_by(country, department, municipality, year, month) %>%
   summarize(flood_count = n()) %>%
   ungroup() %>%
   mutate(year = as.numeric(year),
          month = as.numeric(month))
 
-# head(flood_summary)
-# head(muni_weather)
+# Little reality check on summarize (should evaluate as TRUE)
+nrow(flood_data) == sum(flood_summary$flood_count)
+
+# Reality check
+# Are any municipalities in flood dataset *NOT* in the muni_weather data?
+missing_munis <- dplyr::setdiff(x = flood_summary$municipality,
+                                y = muni_weather$municipality)
+length(missing_munis) # Should evaluate as 0
 
 # Make a "complete" version of flood summary, so each municipality has a row 
 # for each year/month combination
-# Doesn't currently work - ends up with municipalities in wrong country
-# flood_complete <- flood_summary %>%
-#   group_by(country, dept_lower, muni_lower) %>%
-#   tidyr::complete(year, month,
-#                   fill = list(flood_count = 0))
-# Doesn't currently work - ends up with municipalities in wrong country
-# flood_complete <- flood_summary %>%
-#   tidyr::expand(nesting(country, dept_lower, muni_lower),
-#                 year, month)
+
+# However, not all municipalities are necessarily represented in the flood 
+# data, so we need the union of municipalities from weather and flood data to 
+# start. Will just do the ugly thing of binding rows. Apologies.
+# Start by creating data frame of all municipalities present in weather data 
+# but absent from flood data
+munis_to_add <- dplyr::setdiff(x = muni_weather %>% select(country, department, municipality),
+                               y = flood_summary %>% select(country, department, municipality))
+# Add dummy values so making the complete matrix will work
+munis_to_add <- munis_to_add %>%
+  mutate(year = flood_summary$year[1],
+         month = flood_summary$month[1],
+         flood_count = 0)
+
+# Add a row of each of the municipalities to the flood_summary object
+flood_summary <- flood_summary %>%
+  bind_rows(munis_to_add)
+
+# Make a complete matrix, where each country/department/municipality 
+# combination has a row for each year/month combination
 flood_complete <- flood_summary %>%
-  tidyr::complete(year, month, nesting(country, dept_lower, muni_lower),
+  tidyr::complete(year, month, nesting(country, department, municipality),
                   fill = list(flood_count = 0))
 
-# Testing behavior of complete
-df <- data.frame(country = c("Me", "Me", "El", "El"),
-                 dept = c("A", "B", "C", "D"),
-                 year = c(1995, 1993, 1995, 1994),
-                 month = c(1, 2, 3, 4), 
-                 flood_count = c(NA, 2, 1, NA))
-df_complete <- df %>% 
-  tidyr::complete(year, month, nesting(country, dept),
-                  fill = list(flood_count = 0))
-table(df_complete$country, df_complete$dept)
-df_complete
-df_complete %>% filter(country == "Me")
-# Join weather data with flood data; year ranges are different:
-#  + flood_summary: 1985-2019
-#  + muni_weather: 1980-2010
-# For now, only include years that intersect
-# muni_combined <- muni_weather %>%
-#   full_join(flood_summary, 
-#             by = c("country", "dept_lower", "muni_lower", "year")) %>%
-#   select(-c(dept_lower, muni_lower)) %>%
-#   filter(year %in% intersect(muni_weather$year, flood_summary$year))
+# Now (finally!) join the weather data with the flood data
 muni_combined <- muni_weather %>%
-  full_join(flood_complete, 
-            by = c("country", "dept_lower", "muni_lower", "year")) %>%
-  select(-c(dept_lower, muni_lower)) %>%
-  filter(year %in% intersect(muni_weather$year, flood_summary$year))
+  left_join(flood_complete, by = c("year", "country", "department", 
+                                   "municipality"))
+# summary(muni_combined)
 
-# head(muni_combined)
+# Write to disk (probably a temporary solution - 80 MB csv file...)
+write.csv(file = "data/muni-weather-flood.csv",
+          x = muni_combined,
+          row.names = FALSE)
 
-# Not all year/month/municipality combinations have a value for flood_count so 
-# the value of month and year are NA; will want to make complete dataset, 
-# filling a value of 0 for flood_count for all year/month combinations where 
-# there is _not_ already a value in the flood_count column. Probably want to do 
-# this _before_ the join, so climate data (precip, temp, drought) are repeated 
-# appropriately
-
-# How large would a complete dataset be? How many separate municipalities are 
-# there?
-muni_count <- muni_combined %>% 
-  group_by(country, department, municipality) %>%
-  summarize(count = n()) %>%
-  nrow()
-# How many year/month combinations are there?
-year_month <- length(unique(x = muni_combined$year)) * 12
-# Estimated number of rows in complete data
-complete_size <- muni_count * year_month
-# 1054248
-
-# Make data frame of all year/month combinations, filling in a value of 0 where
-# flood_count is NA
-muni_complete <- muni_combined %>%
-  group_by(country, department, municipality) %>%
-  tidyr::complete(year, month, fill = list(flood_count = 0))
-  # tidyr::complete(country, municipality, department, year, month,
-  #          fill = list(flood_count = 0))
-
-# Testing to see how big; some gymnastics for vector recycling
-df <- data.frame(department = unique(x = muni_combined$department))
-df$year <- 1
-df$year[] <- 1985:2010
-df$month <- 1
-df$month[] <- 1:12
-df$value <- NA_integer_
-
-df_complete <- df %>%
-  tidyr::complete(department, year, month,
-                  fill = list(value = 0))
-
-summary(muni_combined)
 # TODO: Add conflict data once text encoding gets sorted out
 
 # Load in conflict event data
