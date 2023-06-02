@@ -23,6 +23,19 @@ flood_data <- flood_data %>%
 year_intersect <- dplyr::intersect(x = flood_data$year,
                                    y = muni_weather$year)
 
+# Will eventually want a complete matrix with every combination of year & month
+# for each municipality.
+# First figure out how many year/month combinations there are for the joined 
+# dataset
+year_month <- length(year_intersect) * 12
+# Now count the total number of municipalities
+muni_count <- muni_weather %>%
+  dplyr::select(country, department, municipality) %>%
+  distinct() %>%
+  nrow()
+# The product should be the number of rows in final matrix
+expected_rows <- year_month * muni_count
+
 # Filter flood data by year
 flood_data <- flood_data %>%
   filter(year %in% year_intersect)
@@ -120,7 +133,10 @@ muni_all <- muni_all %>%
   mutate(conflict_count = if_else(is.na(conflict_count),
                                   true = 0,
                                   false = conflict_count))
-summary(muni_all)
+
+# Quality control to see if we have the expected number of rows; should 
+# evaluate to TRUE
+expected_rows == nrow(muni_all)
 
 # Write to disk (csv 88 MB, not under version control)
 write.csv(file = "data/muni-full.csv",
