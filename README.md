@@ -1,8 +1,30 @@
 # Climate Conflict
+
 Data manipulation for project investigating conflict zones and extreme climate 
 events
 
+## Summary
+
+This repository holds code (and some data) to create datasets for analysis on 
+the level of municipality (ADM2) for four countries (El Salvador, Guatemala,
+Honduras, and Mexico). The goal is to ultimately create a tabular dataset with 
+the following columns:
+
++ country (ADM 0)
++ department (ADM 1)
++ municipality (ADM 2)
++ year
++ month
++ temperature
++ drought
++ precipitation
++ number of floods
++ number conflict events
++ total area of conflict events (on hold)
+
 ## Data
+
+Descriptions of original data sets with relevant columns listed.
 
 + Conflict Site 4-2006.xls: a geocoded conflict zone
   + ID: conflict identifier
@@ -54,15 +76,20 @@ Interested in starting with the following variables:
 
 ## Scripts
 
-+ add-muni-to-flood.R: Add country, department, and municipality to each point 
-in flood event data. Based on GADM boundaries.
-+ boundaries-info.R: Create dataframe with administrative boundary data 
+Scripts, in order of execution.
+
+1. boundaries-info.R: Create dataframe with administrative boundary data 
 information (directory name, country code, and path to shapefile)
-+ create-muni-weather.R: Extract weather data for each municipality on an 
+1. create-muni-weather.R: Extract weather data for each municipality on an 
 annual basis. Uses administrative boundaries from GADM to extract mean values 
 from rasterized weather data.
-+ join-muni-data.R: Join municipality weather data with flood and conflict data 
+1. add-muni-to-flood.R: Add country, department, and municipality to each point 
+in flood event data. Based on GADM boundaries.
+1. add-muni-to-conflict.R: Add country, department, and municipality to each 
+point in conflict data. Based on GADM boundaries.
+1. join-muni-data.R: Join municipality weather data with flood and conflict data 
 for each municipality
+
 
 ## Goal 1
 

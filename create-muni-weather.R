@@ -8,7 +8,7 @@ library(sf)      # reading in shapefiles
 library(terra)   # raster functions
 library(dplyr)   # data wrangling
 
-# Municipality bounaries are from GADM, https://gadm.org
+# Municipality boundaries are from GADM, https://gadm.org
 # NAME_1 = department (ADM1)
 # NAME_2 = municipality (ADM2)
 # Retrieved (if necessary) via geodata::gadm()
