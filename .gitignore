@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 
-data/*
-!data/*.csv
+data/*.xls
+data/*.RData
 data/GEDEvent_v22_1.csv
+data/muni-full.csv
+data/muni-weather-flood.csv

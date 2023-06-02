@@ -15,17 +15,20 @@ muni_weather <- read.csv(file = "data/muni-weather.csv")
 # load(file = "data/flooding_mun_4country.RData")
 flood_data <- read.csv(file = "data/flood-data.csv")
 
+# Drop flood data rows missing municipality information
+flood_data <- flood_data %>%
+  filter(!is.na(municipality))
+  
 # Only want to join on years with flood data *AND* weather data
-year_intersect <- dplyr::intersect(x = flood_summary$year,
+year_intersect <- dplyr::intersect(x = flood_data$year,
                                    y = muni_weather$year)
 
-# Drop flood data rows missing municipality information & filter by year
+# Filter flood data by year
 flood_data <- flood_data %>%
-  filter(!is.na(municipality)) %>%
   filter(year %in% year_intersect)
 
 # Flood data uses a diacritic for México, but weather data does not, update 
-# values in weather data for consistency; filter by year
+# values in weather data with diacritic for consistency; filter by year
 muni_weather <- muni_weather %>%
   mutate(country = gsub(pattern = "Mexico",
                         replacement = "México", 
@@ -56,6 +59,7 @@ length(missing_munis) # Should evaluate as 0
 # However, not all municipalities are necessarily represented in the flood 
 # data, so we need the union of municipalities from weather and flood data to 
 # start. Will just do the ugly thing of binding rows. Apologies.
+
 # Start by creating data frame of all municipalities present in weather data 
 # but absent from flood data
 munis_to_add <- dplyr::setdiff(x = muni_weather %>% select(country, department, municipality),
@@ -70,6 +74,17 @@ munis_to_add <- munis_to_add %>%
 flood_summary <- flood_summary %>%
   bind_rows(munis_to_add)
 
+# Want to make a complete matrix, but need to be sure that all twelve months 
+# are in the flood data (else tidyr::complete won't add any rows for months 
+# that are entirely missing)
+missing_months <- dplyr::setdiff(x = 1:12,
+                                 y = unique(flood_summary$month))
+# If any of the twelve months are missing, add them in as dummy rows
+if (length(missing_months) > 0) {
+  flood_summary <- flood_summary %>%
+    bind_rows(data.frame(month = missing_months))
+} 
+
 # Make a complete matrix, where each country/department/municipality 
 # combination has a row for each year/month combination
 flood_complete <- flood_summary %>%
@@ -80,14 +95,37 @@ flood_complete <- flood_summary %>%
 muni_combined <- muni_weather %>%
   left_join(flood_complete, by = c("year", "country", "department", 
                                    "municipality"))
+
 # summary(muni_combined)
 
-# Write to disk (probably a temporary solution - 80 MB csv file...)
-write.csv(file = "data/muni-weather-flood.csv",
-          x = muni_combined,
+# Load in conflict event data
+conflict_data <- read.csv(file = "data/conflict-data.csv")
+
+# Remove lat/long as not needed for join
+conflict_data <- conflict_data %>%
+  select(-c(latitude, longitude))
+
+# Summarize number of conflicts for each municipality/year/month
+conflict_summary <- conflict_data %>%
+  group_by(country, department, municipality, year, month) %>%
+  summarize(conflict_count = n()) %>%
+  ungroup()
+
+# Join conflict data with the larger flood dataset
+muni_all <- muni_combined %>%
+  left_join(conflict_summary)
+
+# Update conflict count to zero where missing
+muni_all <- muni_all %>%
+  mutate(conflict_count = if_else(is.na(conflict_count),
+                                  true = 0,
+                                  false = conflict_count))
+summary(muni_all)
+
+# Write to disk (csv 88 MB, not under version control)
+write.csv(file = "data/muni-full.csv",
+          x = muni_all,
           row.names = FALSE)
 
-# TODO: Add conflict data once text encoding gets sorted out
-
-# Load in conflict event data
-load(file = "data/GEDEvent_v22_1.RData")
+# Much smaller version, for version control
+saveRDS(muni_all, file = "data/muni-full.rds")
